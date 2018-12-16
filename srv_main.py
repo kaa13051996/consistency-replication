@@ -1,5 +1,5 @@
 from hashlib import sha1
-import connection
+import socket
 
 list_files = ['file_1', 'file_2', 'file_3']
 
@@ -13,49 +13,45 @@ def get_files():
 def del_files(index=3):
     if check_index(int(index)):
         del list_files[index]
-        return event()
+        return get_files()
     else:
         print('Указан ошибочный индекс!')
 
 
 def add_files(name_files='file_4'):
     list_files.append(name_files)
-    return event()
+    return get_files()
 
 
 def chn_name_files(index=3, name='file_4v2'):
     if check_index(int(index)):
         list_files.insert(index, str(name))
         del_files(index + 1)
-        return event()
+        return get_files()
     else:
         print('Указан ошибочный индекс!')
 
 
-def event():
-    print('Были произведены изменения')
-    return get_files()
-
-
 def check_index(index):
-    if 0 <= index < len(list_files):
-        return True
-    else:
-        return False
+    return True if 0 <= index < len(list_files) else False
 
 
 if __name__ == '__main__':
+    sock = socket.socket()
+    sock.bind(('localhost', 9090))
+    sock.listen(4)
     while True:
         try:
-            obj = connection.Connection(9090)
-            data = obj.get_data().decode()
-            command = {'0': get_files(),
-                       '1': add_files(),
-                       '2': chn_name_files(),
-                       '3': del_files()}
-            result = command.get(data)
-            obj.send_data(bytes(str(result).encode()))
+            conn, addr = sock.accept()
+            data = conn.recv(1024).decode()
+            if data == '1':
+                result = add_files()
+            elif data == '2':
+                result = chn_name_files()
+            elif data == '3':
+                result = del_files()
+            else:
+                result = get_files()
+            conn.send(bytes(str(result).encode()))
         except Exception as ex:
             print('Error: {}!'.format(ex.args[1]))
-        # finally:
-        #     obj.send_data(bytes(str(None).encode()))
